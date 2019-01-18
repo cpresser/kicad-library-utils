@@ -6,6 +6,7 @@ from __future__ import division
 # https://github.com/michal777/KiCad_Lib_Check
 
 from rules.rule import *
+from operator import itemgetter
 import re, os, math
 
 from rules.klc_constants import *
@@ -96,6 +97,59 @@ class Rule(KLCRule):
         else:
             return None
 
+
+
+    def getLinesOverlap(self, layer):
+      # from https://stackoverflow.com/questions/328107/how-can-you-determine-a-point-is-between-two-other-points-on-a-line-segment
+      def distance(a,b):
+        return math.sqrt((a['x'] - b['x'])**2 + (a['y'] - b['y'])**2)
+
+      def is_between(a,b,c):
+        ac = distance(a,c)
+        cb = distance(c,b)
+        ab = distance(a,b)
+        d = ac + cb - ab
+        return d < 0.0001
+
+      overlap = []
+      directions = {}
+      # sort lines by colinearity
+      for line in layer:
+        start = getStartPoint(line)
+        end = getEndPoint(line)
+
+        if not start or not end:
+          # not sure if that can happen?
+          continue
+
+        dx = start['x'] - end['x']
+        dy = start['y'] - end['y']
+        line['l'] = distance(start, end)
+        if dx == 0:
+          d = 'h'
+        elif dy == 0:
+          d = 'v'
+        else:
+          d = round(dx/dy, 3)
+          print ("diiii", d)
+
+        if not d in directions:
+          directions[d] = []
+        directions[d].append(line)
+
+
+      for d, lines in directions.items():
+        for line in lines:
+          for line2 in lines:
+            if line == line2:
+              continue
+            #if is_between(line['start'], line['end'], line2['start']) or is_between(line['start'], line['end'], line2['end']):
+            if is_between(line['start'], line['end'], line2['start']):
+              if not line in overlap:
+                overlap.append(line)
+
+      return overlap
+
     def check(self):
         """
         Proceeds the checking of the rule.
@@ -118,6 +172,7 @@ class Rule(KLCRule):
 
         self.bad_grid  = []
         self.bad_width = []
+        self.overlaps = []
 
         self.fCourtyard = module.filterGraphs('F.CrtYd')
         self.bCourtyard = module.filterGraphs('B.CrtYd')
@@ -132,6 +187,11 @@ class Rule(KLCRule):
         self.courtyard = self.fCourtyard + self.bCourtyard
 
         GRID = int(KLC_CRTYD_GRID * 1E6)
+
+        # Check for intersecting lines
+        self.overlaps.extend(self.getLinesOverlap(self.fCourtyard))
+        self.overlaps.extend(self.getLinesOverlap(self.bCourtyard))
+
 
         for graph in self.courtyard:
             if graph['width'] != KLC_CRTYD_WIDTH:
@@ -174,9 +234,17 @@ class Rule(KLCRule):
             for bad in self.bad_grid:
                 self.errorExtra(graphItemString(bad, layer=True, width=False))
 
+        # Check that courtyard items are on correct grid
+        if len(self.overlaps) > 0:
+            self.error("Courtyard lines should not overlap.")
+            self.errorExtra("The following lines do overlap at least one other line")
+            for bad in self.overlaps:
+                self.errorExtra(graphItemString(bad, layer=True, width=False))
+
         return any([
             len(self.bad_width) > 0,
-            len(self.bad_grid) > 0
+            len(self.bad_grid) > 0,
+            len(self.overlaps) > 0
             ])
 
     def fix(self):
