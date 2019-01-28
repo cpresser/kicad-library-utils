@@ -99,7 +99,7 @@ class Rule(KLCRule):
 
     def isClosed(self, layer):
       def isSame(p1, p2):
-        s = p1['x'] == p2['x'] and p1['y'] == p2['y']
+        s = abs(p1['x'] - p2['x']) < 0.00001 and abs(p1['y'] - p2['y']) < 0.00001
         return s
 
       # no line is considered as closed
