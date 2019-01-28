@@ -44,8 +44,8 @@ def getStartPoint(graph):
         # now get the angle of the end point
         a = math.degrees(math.atan2(dy_s, dx_s))
         a_s = math.radians(a + a_arc)
-        x_s = round(x_c - math.cos(a_s) * r, 6)
-        y_s = round(y_c - math.sin(a_s) * r, 6)
+        x_s = x_c - math.cos(a_s) * r
+        y_s = y_c - math.sin(a_s) * r
         return {'x': x_s, 'y': y_s}
     elif 'start' in graph:
         return graph['start']

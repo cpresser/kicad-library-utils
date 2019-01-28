@@ -98,8 +98,8 @@ class Rule(KLCRule):
 
 
     def isClosed(self, layer):
-      def isSame(p1, p2):
-        s = abs(p1['x'] - p2['x']) < 0.00001 and abs(p1['y'] - p2['y']) < 0.00001
+      def isSame(p1, p2, tolerance):
+        s = abs(p1['x'] - p2['x']) <= tolerance and abs(p1['y'] - p2['y']) <= tolerance
         return s
 
       # no line is considered as closed
@@ -111,17 +111,21 @@ class Rule(KLCRule):
       curr_line = lines.pop()
       curr_point = getStartPoint(curr_line)
       end_point = getEndPoint(curr_line)
+      tolerance = 0
 
       while len(lines) > 0:
+        tolerance = 0
         match = False
         for line in lines:
-          if isSame(curr_point, getStartPoint(line)):
+          if 'angle' in line or 'angle' in curr_line:
+            tolerance = 0.01
+          if isSame(curr_point, getStartPoint(line), tolerance):
             curr_line = line
             curr_point = getEndPoint(line)
             lines.remove(line)
             match = True
             break
-          if isSame(curr_point, getEndPoint(line)):
+          if isSame(curr_point, getEndPoint(line), tolerance):
             curr_line = line
             curr_point = getStartPoint(line)
             lines.remove(line)
@@ -132,7 +136,7 @@ class Rule(KLCRule):
         if not match:
           return [curr_line]
       # now check the if the last points match
-      if isSame(curr_point, end_point):
+      if isSame(curr_point, end_point, tolerance):
         return []
       else:
         return [curr_line]
