@@ -226,8 +226,8 @@ class Rule(KLCRule):
 
         # Check that courtyard is closed
         if len(self.unconnected) > 0:
-            self.error("Courtyard should be closed.")
-            self.errorExtra("The following lines have unconnected enpoints")
+            self.error("Courtyard must be closed.")
+            self.errorExtra("The following lines have unconnected endpoints")
             for bad in self.unconnected:
                 self.errorExtra(graphItemString(bad, layer=True, width=False))
 
