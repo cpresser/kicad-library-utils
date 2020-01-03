@@ -38,8 +38,7 @@ libfiles = []
 for libfile in args.libfiles:
     libfiles += glob(libfile)
 
-exit_code = 0
-
+(maxx, maxy, minx, miny) = (0, 0, 0, 0)
 font = "osifont"
 
 def get_fill_style(polyl):
@@ -121,6 +120,13 @@ def get_points(polyl):
     pass 
   return (p)
 
+def update_minmax(start):
+  global maxx, minx, maxy, miny
+  maxx = max(maxx, start[0])
+  minx = min(minx, start[0])
+  maxy = max(maxy, start[1])
+  miny = min(miny, start[1])
+
 for libfile in libfiles:
     lib = SchLib(libfile)
 
@@ -150,17 +156,24 @@ for libfile in libfiles:
 
         # convert to svg
         dwg = svgwrite.Drawing(filename=component.name + ".svg")
-        (maxx, maxy, minx, miny) = (0, 0, 0, 0)
         padding = 250
 
         for rect in component.draw['rectangles']:
+          if int(rect['unit']) > 1:
+            continue
           thickness = get_tickness(rect)
           (fill, fill_opacity) = get_fill_style(rect)
           size = (int(rect['endx'])  - int(rect['startx']), int(rect['starty'])  - int(rect['endy']))
           insert = (int(rect['startx']), -1 * int(rect['starty'])) 
+
+          # update min/max to find the bounding box
+          update_minmax(insert)
+
           dwg.add(dwg.rect(insert=insert, size=size, fill_opacity=fill_opacity, fill=fill, stroke="#840000", stroke_width=thickness, stroke_opacity=1, stroke_linejoin="round", stroke_linecap="round"))
 
         for circ in component.draw['circles']:
+          if int(circ['unit']) > 1:
+            continue
           thickness = get_tickness(circ)
           (fill, fill_opacity) = get_fill_style(circ)
           radius = circ['radius']
@@ -168,12 +181,21 @@ for libfile in libfiles:
           dwg.add(dwg.circle(center=center, r=radius, fill_opacity=fill_opacity, fill=fill, stroke="#840000", stroke_width=thickness, stroke_opacity=1, stroke_linejoin="round", stroke_linecap="round"))
 
         for polyl in component.draw['polylines']:
+          if int(polyl['unit']) > 1:
+            continue
           points = get_points(polyl)
           thickness = get_tickness(polyl)
           (fill, fill_opacity) = get_fill_style(polyl)
+
+          # update min/max to find the bounding box
+          for p in points:
+            update_minmax(p)
+
           dwg.add(dwg.polyline(points, fill_opacity=fill_opacity, fill=fill, stroke="#840000", stroke_width=thickness, stroke_opacity=1, stroke_linejoin="round", stroke_linecap="round"))
 
         for pin in component.draw['pins']:
+          if int(pin['unit']) > 1:
+            continue
           thickness = get_tickness(pin)
           (start, stop, mid, text_orig_etype, text_orig_name, text_a, rot, mir) = get_pin_coords(pin)
           etype = get_electrical_type(pin)
@@ -181,10 +203,8 @@ for libfile in libfiles:
           fontsize_num = int(pin['num_text_size'])
 
           # update min/max to find the bounding box
-          maxx = max(maxx, stop[0], start[0])
-          minx = min(minx, stop[0], start[0])
-          maxy = max(maxy, stop[1], stop[1])
-          miny = min(miny, stop[1], stop[1])
+          update_minmax(stop)
+          update_minmax(start)
 
           # add everything to a group so we can rotate if as group
           p = dwg.add(dwg.g(transform=rot))
@@ -201,13 +221,15 @@ for libfile in libfiles:
             p.add(dwg.text(pin['num'],  mid, text_anchor="middle", dominant_baseline="middle", baseline_shift=-1*mir*fontsize_num/2,  font_size=fontsize_num,  font_family=font, fill="#840000"))
 
         for t in component.draw['texts']:
+          if t['unit'] != '1':
+            continue
           start = (int(t['posx']), -1* int(t['posy']))
           dwg.add(dwg.text(t['text'], start, text_anchor="middle", dominant_baseline="middle", font_size=t['text_size'], font_family=font, fill="#840000"))
 
 	# add name
         if args.name:
           tsize = 50
-          dwg.add(dwg.text(lib_name + ":" + component.name, (0, maxx + tsize), text_anchor="middle", dominant_baseline="middle", font_size=tsize, font_weight="bold", font_family=font, fill="#000000"))
+          dwg.add(dwg.text(lib_name + ":" + component.name, (0, maxy + padding - tsize), text_anchor="middle", dominant_baseline="middle", font_size=tsize, font_weight="bold", font_family=font, fill="#000000"))
           
         #print(component.draw)
         minx -= padding
@@ -221,5 +243,5 @@ for libfile in libfiles:
         dwg.save()
         if args.png:
          ret = os.system("rsvg-convert " + component.name + ".svg -o " + component.name + ".png")
- 
-sys.exit(exit_code);
+
+sys.exit(0);
