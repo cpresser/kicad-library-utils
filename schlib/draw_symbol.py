@@ -4,6 +4,8 @@
 import argparse
 import svgwrite
 import sys, os
+import re
+import math
 
 common = os.path.abspath(os.path.join(sys.path[0], '..','common'))
 
@@ -11,8 +13,6 @@ if not common in sys.path:
     sys.path.append(common)
 
 from schlib import *
-
-import re
 
 #enable windows wildcards
 from glob import glob
@@ -120,12 +120,12 @@ def get_points(polyl):
     pass 
   return (p)
 
-def update_minmax(start):
+def update_minmax(start, o = 0):
   global maxx, minx, maxy, miny
-  maxx = max(maxx, start[0])
-  minx = min(minx, start[0])
-  maxy = max(maxy, start[1])
-  miny = min(miny, start[1])
+  maxx = max(maxx, start[0] + o)
+  minx = min(minx, start[0] - o)
+  maxy = max(maxy, start[1] + o)
+  miny = min(miny, start[1] - o)
 
 for libfile in libfiles:
     lib = SchLib(libfile)
@@ -171,6 +171,19 @@ for libfile in libfiles:
 
           dwg.add(dwg.rect(insert=insert, size=size, fill_opacity=fill_opacity, fill=fill, stroke="#840000", stroke_width=thickness, stroke_opacity=1, stroke_linejoin="round", stroke_linecap="round"))
 
+        for arc in component.draw['arcs']:
+          if int(arc['unit']) > 1:
+            continue
+
+          thickness = get_tickness(arc)
+          (fill, fill_opacity) = get_fill_style(arc)
+          r = math.sqrt((int(arc['posx']) - int(arc['startx']))**2 + (int(arc['posy']) - int(arc['starty']))**2)
+          ccw = 1 if int(arc['start_angle']) > int(arc['end_angle']) else 0
+          d = "M %d %d A %d %d 0 0 %d %d %d" % (int(arc['startx']), -1 * int(arc['starty']), r, r, ccw, int(arc['endx']), -1*int(arc['endy']))
+          center = (int(arc['posx']), -1 * int(arc['posy']))
+          update_minmax(center, r)
+          dwg.add(dwg.path(d=d, fill_opacity=fill_opacity, fill=fill, stroke="#840000", stroke_width=thickness, stroke_opacity=1, stroke_linejoin="round", stroke_linecap="round"))
+
         for circ in component.draw['circles']:
           if int(circ['unit']) > 1:
             continue
@@ -178,6 +191,7 @@ for libfile in libfiles:
           (fill, fill_opacity) = get_fill_style(circ)
           radius = circ['radius']
           center = (int(circ['posx']), -1 * int(circ['posy']))
+          update_minmax(center, int(radius))
           dwg.add(dwg.circle(center=center, r=radius, fill_opacity=fill_opacity, fill=fill, stroke="#840000", stroke_width=thickness, stroke_opacity=1, stroke_linejoin="round", stroke_linecap="round"))
 
         for polyl in component.draw['polylines']:
