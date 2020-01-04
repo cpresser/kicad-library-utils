@@ -227,17 +227,20 @@ for libfile in libfiles:
           p.add(dwg.text(etype, text_orig_etype, text_anchor=text_a, dominant_baseline="middle", font_size=50, font_family=font, fill="#000084"))
           if component.definition['draw_pinname'] == 'Y':
             if pin_offset == 0:
-              p.add(dwg.text(pin['name'], mid, text_anchor="middle", dominant_baseline="middle", baseline_shift=mir*fontsize_name/2, font_size=fontsize_name, font_family=font, fill="#008484"))
+              tpos = (mid[0], mid[1] - fontsize_num*0.2)
+              p.add(dwg.text(pin['name'], tpos, text_anchor="middle", dominant_baseline="middle", font_size=fontsize_name, font_family=font, fill="#008484"))
             else:
               anchor = "end" if text_a == "start" else "start"
-              p.add(dwg.text(pin['name'], text_orig_name, text_anchor=anchor, dominant_baseline="middle", font_size=fontsize_name, font_family=font, fill="#008484"))
+              tpos = (text_orig_name[0], text_orig_name[1] + fontsize_name/2)
+              p.add(dwg.text(pin['name'], tpos, text_anchor=anchor, font_size=fontsize_name, font_family=font, fill="#008484"))
           if component.definition['draw_pinnumber'] == 'Y':
-            p.add(dwg.text(pin['num'],  mid, text_anchor="middle", dominant_baseline="middle", baseline_shift=-1*mir*fontsize_num/2,  font_size=fontsize_num,  font_family=font, fill="#840000"))
+            tpos = (mid[0], mid[1] + fontsize_num*1) if pin_offset == 0 else (mid[0], mid[1] - fontsize_num*0.2)
+            p.add(dwg.text(pin['num'], tpos, text_anchor="middle", dominant_baseline="middle", font_size=fontsize_num, font_family=font, fill="#840000"))
 
         for t in component.draw['texts']:
-          if t['unit'] != '1':
+          if int(t['unit']) > 1:
             continue
-          start = (int(t['posx']), -1* int(t['posy']))
+          start = (int(t['posx']), -1 * int(t['posy']) + int(t['text_size'])/2)
           dwg.add(dwg.text(t['text'], start, text_anchor="middle", dominant_baseline="middle", font_size=t['text_size'], font_family=font, fill="#840000"))
 
 	# add name
