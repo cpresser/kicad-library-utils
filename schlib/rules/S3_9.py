@@ -9,11 +9,15 @@ class Rule(KLCRule):
     Create the methods check and fix to use with the kicad lib files.
     """
     def __init__(self, component):
-        super(Rule, self).__init__(component, 'Graphical elements are not duplicated')
+        super(Rule, self).__init__(component, 'Graphical elements are not duplicated or overlap')
 
     def check(self):
         """
         Look at all drawing items and try to find duplicates
+        Currently this only checks on a very high level, some more detailed checks need to be implemented.
+        Possible improvements:
+        * Arcs and Circles with the same center and radius
+        * Split polylines and rectangles into single lines and check them for overlap
         """
         def check_identical(typ, items, properties):
           identical_items = []
