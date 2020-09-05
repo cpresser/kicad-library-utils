@@ -8,6 +8,18 @@ class Rule(KLCRule):
     """
     Create the methods check and fix to use with the kicad lib files.
     """
+    # define which items are checked against which properties
+    singular_type_name= {'arcs': 'arc',
+                         'circles': 'circle',
+                         'polylines': 'polyline',
+                         'rectangles': 'rectangle',
+                         'texts': 'text'}
+    types = {'arcs': ['posx', 'posy', 'radius', 'start_angle', 'end_angle'],
+             'circles': ['posx', 'posy', 'radius'],
+             'polylines': ['points'],
+             'rectangles': ['startx', 'starty', 'endx', 'endy'],
+             'texts': ['posx', 'posy', 'direction', 'text']}
+
     def __init__(self, component):
         super(Rule, self).__init__(component, 'Graphical elements are not duplicated or overlap')
 
@@ -34,39 +46,35 @@ class Rule(KLCRule):
                 continue
 
               # check amount of properties that are the same
-              i = 0
+              is_identical = True
               for prop in properties:
-                if itm1[prop] == itm2[prop]:
-                  i += 1
-              # are all properties checked the same? if yes we consider this a duplicate
-              if i == len(properties):
-                # really hacky string manipulation. remote the plural 's' from the typ
-                msg = "Duplicate %s (" % typ[:-1]
-                for prop in properties:
-                  msg += "%s: %s, " % (prop, itm1[prop])
-                # more hacky text stuff, remove the ', ' of the last element
-                msg = msg[:-2] + ")"
-                identical_items.append(msg)
+                if itm1[prop] != itm2[prop]:
+                  is_identical = False
+                  break
+
+              # no properties differ, we consider those items to be identical
+              if is_identical:
+                # construct a nice message so the user can see which items are considered
+                # identical and for which reason
+                item_details = [ "{}: {}".format(prop, itm1[prop]) for prop in properties]
+                error_msg = "Duplicate {typ:s} ({properties:s})".format(
+                        typ=self.singular_type_name[typ],
+                        properties=", ".join(item_details))
+                identical_items.append(error_msg)
                 # no need to iterate over this item in the outer loop again
                 items.remove(itm2)
           return(identical_items)
 
-        # define which items are checked against which properties
-        types = {'arcs': ['posx', 'posy', 'radius', 'start_angle', 'end_angle'], \
-                 'circles': ['posx', 'posy', 'radius'], \
-                 'polylines': ['points'], \
-                 'rectangles': ['startx', 'starty', 'endx', 'endy'], \
-                 'texts': ['posx', 'posy', 'direction', 'text']}
 
-        dups = []
+        identical_items = []
         # run the check for each type
-        for typ, prop in types.items():
-          dups.extend(check_identical(typ, self.component.draw[typ], prop))
+        for typ, prop in self.types.items():
+          identical_items.extend(check_identical(typ, self.component.draw[typ], prop))
 
-        if len(dups) > 0:
+        if len(identical_items) > 0:
             self.error("Graphic elements must not be duplicated.")
-            for dup in dups:
-               self.errorExtra(dup)
+            for element in identical_items:
+               self.errorExtra(element)
 
         return False
 
